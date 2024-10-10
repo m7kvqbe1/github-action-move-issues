@@ -1,0 +1,28 @@
+name: "Move Issue to Project Column"
+description: "A GitHub Action to move issues between GitHub Projects V2 columns based on specific labels and criteria."
+author: "m7kvqbe1"
+
+inputs:
+  github-token:
+    description: "Personal Access Token to access the repository and projects board"
+    required: true
+  project-url:
+    description: "The URL of the GitHub Project (V2)"
+    required: true
+  target-labels:
+    description: 'Comma-separated list of labels that should trigger the action (e.g., "Size: Small, Size: Medium")'
+    required: true
+  target-column:
+    description: 'The target column name to move the issue to (e.g., "Candidates for Ready")'
+    required: true
+  ignored-columns:
+    description: 'Comma-separated list of column names to ignore (e.g., "Ready, In Progress, In Review, Done")'
+    required: true
+
+runs:
+  using: "node20"
+  main: "index.js"
+
+branding:
+  icon: "move"
+  color: "blue"
