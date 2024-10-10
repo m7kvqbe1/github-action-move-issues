@@ -4,11 +4,13 @@ A GitHub Action to move issues between GitHub Projects V2 columns based on speci
 
 ## Inputs
 
-- `github-token`: **Required**. You will need to create a PAT (Personal Access Token) with the `repo` and `admin:org` scopes.
-- `project-url`: **Required**. The URL of the GitHub Project V2.
-- `target-labels`: **Required**. Comma-separated list of labels that should trigger the action (e.g., "Size: Small, Size: Medium").
-- `target-column`: **Required**. The target column name to move the issue to (e.g., "Candidates for Ready").
-- `ignored-columns`: **Required**. Comma-separated list of column names to ignore (e.g., "Ready, In Progress, In Review, Done").
+| Input             | Description                                                                                        | Required |
+| ----------------- | -------------------------------------------------------------------------------------------------- | -------- |
+| `github-token`    | You will need to create a PAT (Personal Access Token) with the `repo` and `admin:org` scopes.      | Yes      |
+| `project-url`     | The URL of the GitHub Project V2.                                                                  | Yes      |
+| `target-labels`   | Comma-separated list of labels that should trigger the action (e.g., "Size: Small, Size: Medium"). | Yes      |
+| `target-column`   | The target column name to move the issue to (e.g., "Candidates for Ready").                        | Yes      |
+| `ignored-columns` | Comma-separated list of column names to ignore (e.g., "Ready, In Progress, In Review, Done").      | Yes      |
 
 ## Example Workflow
 
