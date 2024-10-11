@@ -5,10 +5,9 @@ const parseCommaSeparatedInput = (input) => {
   return input.split(",").map((item) => item.trim());
 };
 
-const validateIssue = (issue, TARGET_LABELS, core) => {
+const validateIssue = (issue, TARGET_LABELS) => {
   if (!issue || !issue.node_id) {
-    core.setFailed("Invalid or missing issue object");
-    return false;
+    throw new Error("Invalid or missing issue object");
   }
 
   if (!issue.labels.some((label) => TARGET_LABELS.includes(label.name))) {
@@ -201,14 +200,13 @@ const updateIssueStatus = async (
   });
 };
 
-const getTargetStatusOption = (statusField, TARGET_COLUMN, core) => {
+const getTargetStatusOption = (statusField, TARGET_COLUMN) => {
   const targetStatusOption = statusField.options.find(
     (option) => option.name === TARGET_COLUMN
   );
 
   if (!targetStatusOption) {
-    core.setFailed(`Target status "${TARGET_COLUMN}" not found in project`);
-    return null;
+    throw new Error(`Target status "${TARGET_COLUMN}" not found in project`);
   }
 
   return targetStatusOption;
@@ -219,15 +217,10 @@ const processIssueItem = async (
   projectData,
   issue,
   TARGET_COLUMN,
-  IGNORED_COLUMNS,
-  core
+  IGNORED_COLUMNS
 ) => {
   const statusField = await getStatusField(octokit, projectData.id);
-  const targetStatusOption = getTargetStatusOption(
-    statusField,
-    TARGET_COLUMN,
-    core
-  );
+  const targetStatusOption = getTargetStatusOption(statusField, TARGET_COLUMN);
 
   if (!targetStatusOption) {
     return;
@@ -270,18 +263,18 @@ const run = async () => {
   try {
     const token = core.getInput("github-token");
     const projectUrl = core.getInput("project-url");
-    const targetLabelsInput = core.getInput("target-labels");
+    const targetLabels = core.getInput("target-labels");
     const targetColumn = core.getInput("target-column");
-    const ignoredColumnsInput = core.getInput("ignored-columns");
+    const ignoredColumns = core.getInput("ignored-columns");
 
     const TARGET_COLUMN = targetColumn.trim();
-    const TARGET_LABELS = parseCommaSeparatedInput(targetLabelsInput);
-    const IGNORED_COLUMNS = parseCommaSeparatedInput(ignoredColumnsInput);
+    const TARGET_LABELS = parseCommaSeparatedInput(targetLabels);
+    const IGNORED_COLUMNS = parseCommaSeparatedInput(ignoredColumns);
 
     const octokit = github.getOctokit(token);
     const issue = github.context.payload.issue;
 
-    if (!validateIssue(issue, TARGET_LABELS, core)) {
+    if (!validateIssue(issue, TARGET_LABELS)) {
       return;
     }
 
@@ -291,8 +284,7 @@ const run = async () => {
       projectData,
       issue,
       TARGET_COLUMN,
-      IGNORED_COLUMNS,
-      core
+      IGNORED_COLUMNS
     );
   } catch (error) {
     core.setFailed(`Error moving issue: ${error.message}`);
