@@ -11,8 +11,7 @@ const validateIssue = (issue, TARGET_LABELS) => {
   }
 
   if (!issue.labels.some((label) => TARGET_LABELS.includes(label.name))) {
-    console.log(`Issue #${issue.number} does not have a target label`);
-    return false;
+    throw new Error(`Issue #${issue.number} does not have a target label`);
   }
 
   return true;
