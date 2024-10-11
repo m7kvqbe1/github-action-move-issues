@@ -34479,6 +34479,14 @@ const parseCommaSeparatedInput = (input) => {
   return input.split(",").map((item) => item.trim());
 };
 
+const parseProjectUrl = (url) => {
+  const parts = url.split("/");
+  return {
+    orgName: parts[parts.length - 3],
+    projectUrl: url,
+  };
+};
+
 const validateIssue = (issue, TARGET_LABELS) => {
   if (!issue || !issue.node_id) {
     throw new Error("Invalid or missing issue object");
@@ -34488,15 +34496,7 @@ const validateIssue = (issue, TARGET_LABELS) => {
     throw new Error(`Issue #${issue.number} does not have a target label`);
   }
 
-  return true;
-};
-
-const parseProjectUrl = (url) => {
-  const parts = url.split("/");
-  return {
-    orgName: parts[parts.length - 3],
-    projectUrl: url,
-  };
+  return;
 };
 
 const fetchAllProjects = async (
@@ -34747,11 +34747,10 @@ const run = async () => {
     const octokit = github.getOctokit(token);
     const issue = github.context.payload.issue;
 
-    if (!validateIssue(issue, TARGET_LABELS)) {
-      return;
-    }
+    validateIssue(issue, TARGET_LABELS);
 
     const projectData = await getProjectData(octokit, projectUrl);
+
     await processIssueItem(
       octokit,
       projectData,
