@@ -39,6 +39,7 @@ runs:
     - name: Run action
       run: node index.js
       shell: bash
+      working-directory: ${{ github.action_path }}
 
 branding:
   icon: "move"
