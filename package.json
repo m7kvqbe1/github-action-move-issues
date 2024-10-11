@@ -1,6 +1,6 @@
 {
   "name": "github-action-move-issues",
-  "version": "0.1.0",
+  "version": "1.0.4",
   "description": "A GitHub Action to move issues between GitHub Projects V2 columns based on labels.",
   "main": "index.js",
   "scripts": {

@@ -20,8 +20,16 @@ inputs:
     required: true
 
 runs:
-  using: "node20"
-  main: "index.js"
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+    - run: npm ci
+      shell: bash
+    - run: node index.js
+      shell: bash
 
 branding:
   icon: "move"
