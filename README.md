@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Move Issue to Project Column
-        uses: m7kvqbe1/github-action-move-issues@v1.0.0
+        uses: m7kvqbe1/github-action-move-issues@{release}
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           project-url: "https://github.com/orgs/your-org/projects/1"
@@ -34,3 +34,5 @@ jobs:
           target-column: "Candidates for Ready"
           ignored-columns: "Ready, In Progress, In Review, Done"
 ```
+
+Get the latest `{release}` tag from https://github.com/m7kvqbe1/github-action-move-issues/releases.
