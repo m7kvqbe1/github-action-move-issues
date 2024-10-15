@@ -1,0 +1,22 @@
+name: Test Move Issue Action
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Name of branch to test"
+        required: true
+        type: string
+
+jobs:
+  test-move-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move Issue to Project Column
+        uses: m7kvqbe1/github-action-move-issues@${{ github.event.inputs.branch }}
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          project-url: ${{ secrets.PROJECT_URL }}
+          target-labels: "Size: Small, Size: Medium"
+          target-column: "Todo"
+          ignored-columns: "In Progress, Done"
