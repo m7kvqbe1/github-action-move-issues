@@ -34466,14 +34466,62 @@ module.exports = /*#__PURE__*/JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45
 /******/ 	}
 /******/ 	
 /************************************************************************/
+/******/ 	/* webpack/runtime/compat get default export */
+/******/ 	(() => {
+/******/ 		// getDefaultExport function for compatibility with non-harmony modules
+/******/ 		__nccwpck_require__.n = (module) => {
+/******/ 			var getter = module && module.__esModule ?
+/******/ 				() => (module['default']) :
+/******/ 				() => (module);
+/******/ 			__nccwpck_require__.d(getter, { a: getter });
+/******/ 			return getter;
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	(() => {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__nccwpck_require__.d = (exports, definition) => {
+/******/ 			for(var key in definition) {
+/******/ 				if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	(() => {
+/******/ 		__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__nccwpck_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
 /******/ 	
 /************************************************************************/
 var __webpack_exports__ = {};
-const core = __nccwpck_require__(7484);
-const github = __nccwpck_require__(3228);
+// This entry need to be wrapped in an IIFE because it need to be in strict mode.
+(() => {
+"use strict";
+__nccwpck_require__.r(__webpack_exports__);
+/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(7484);
+/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(_actions_core__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(3228);
+/* harmony import */ var _actions_github__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(_actions_github__WEBPACK_IMPORTED_MODULE_1__);
+
+
 
 const parseCommaSeparatedInput = (input) => {
   return input.split(",").map((item) => item.trim());
@@ -34481,8 +34529,11 @@ const parseCommaSeparatedInput = (input) => {
 
 const parseProjectUrl = (url) => {
   const parts = url.split("/");
+  const isUserProject = parts[3] === "users";
+
   return {
-    orgName: parts[parts.length - 3],
+    owner: parts[4],
+    isOrg: !isUserProject,
     projectUrl: url,
   };
 };
@@ -34501,13 +34552,25 @@ const validateIssue = (issue, TARGET_LABELS) => {
 
 const fetchAllProjects = async (
   octokit,
-  orgName,
+  owner,
+  isOrg,
   cursor = null,
   allProjects = []
 ) => {
-  const query = `
-    query($orgName: String!, $cursor: String) {
-      organization(login: $orgName) {
+  const query = isOrg
+    ? `
+    query($owner: String!, $cursor: String) {
+      organization(login: $owner) {
+        projectsV2(first: 100, after: $cursor) {
+          nodes { id, url, number }
+          pageInfo { hasNextPage, endCursor }
+        }
+      }
+    }
+  `
+    : `
+    query($owner: String!, $cursor: String) {
+      user(login: $owner) {
         projectsV2(first: 100, after: $cursor) {
           nodes { id, url, number }
           pageInfo { hasNextPage, endCursor }
@@ -34516,17 +34579,16 @@ const fetchAllProjects = async (
     }
   `;
 
-  const result = await octokit.graphql(query, { orgName, cursor });
-  const updatedProjects = [
-    ...allProjects,
-    ...result.organization.projectsV2.nodes,
-  ];
+  const result = await octokit.graphql(query, { owner, cursor });
+  const projectsData = isOrg ? result.organization : result.user;
+  const updatedProjects = [...allProjects, ...projectsData.projectsV2.nodes];
 
-  if (result.organization.projectsV2.pageInfo.hasNextPage) {
+  if (projectsData.projectsV2.pageInfo.hasNextPage) {
     return fetchAllProjects(
       octokit,
-      orgName,
-      result.organization.projectsV2.pageInfo.endCursor,
+      owner,
+      isOrg,
+      projectsData.projectsV2.pageInfo.endCursor,
       updatedProjects
     );
   }
@@ -34535,8 +34597,12 @@ const fetchAllProjects = async (
 };
 
 const getProjectData = async (octokit, projectUrl) => {
-  const { orgName, projectUrl: fullProjectUrl } = parseProjectUrl(projectUrl);
-  const allProjects = await fetchAllProjects(octokit, orgName);
+  const {
+    owner,
+    isOrg,
+    projectUrl: fullProjectUrl,
+  } = parseProjectUrl(projectUrl);
+  const allProjects = await fetchAllProjects(octokit, owner, isOrg);
   const project = allProjects.find((p) => p.url === fullProjectUrl);
 
   if (!project) {
@@ -34732,38 +34798,155 @@ const processIssueItem = async (
   console.log(`Moved issue #${issue.number} to "${TARGET_COLUMN}"`);
 };
 
+const handleLabeledEvent = async (
+  octokit,
+  issue,
+  projectData,
+  TARGET_COLUMN,
+  IGNORED_COLUMNS,
+  TARGET_LABELS
+) => {
+  validateIssue(issue, TARGET_LABELS);
+
+  await processIssueItem(
+    octokit,
+    projectData,
+    issue,
+    TARGET_COLUMN,
+    IGNORED_COLUMNS
+  );
+};
+
+const handleUnlabeledEvent = async (
+  octokit,
+  issue,
+  projectData,
+  DEFAULT_COLUMN,
+  IGNORED_COLUMNS,
+  TARGET_LABELS
+) => {
+  const removedLabel = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.label.name;
+  if (!TARGET_LABELS.includes(removedLabel)) {
+    return;
+  }
+
+  const hasTargetLabel = issue.labels.some((label) =>
+    TARGET_LABELS.includes(label.name)
+  );
+
+  if (hasTargetLabel) {
+    console.log(
+      `Issue #${issue.number} still has a target label. Not moving to default column.`
+    );
+    return;
+  }
+
+  await moveIssueToDefaultColumn(
+    octokit,
+    projectData,
+    issue,
+    DEFAULT_COLUMN,
+    IGNORED_COLUMNS
+  );
+};
+
+const moveIssueToDefaultColumn = async (
+  octokit,
+  projectData,
+  issue,
+  defaultColumn,
+  ignoredColumns
+) => {
+  const statusField = await getStatusField(octokit, projectData.id);
+  const defaultStatusOption = getTargetStatusOption(statusField, defaultColumn);
+
+  if (!defaultStatusOption) {
+    throw new Error(`Default column "${defaultColumn}" not found in project`);
+  }
+
+  let issueItemData = await getIssueItemData(
+    octokit,
+    projectData.id,
+    issue.node_id
+  );
+
+  if (!issueItemData) {
+    console.log(`Issue #${issue.number} is not in the project. Skipping.`);
+    return;
+  }
+
+  const currentStatus = getCurrentStatus(issueItemData);
+
+  if (ignoredColumns.includes(currentStatus)) {
+    console.log(
+      `Issue #${issue.number} is in an ignored column (${currentStatus}). Skipping.`
+    );
+    return;
+  }
+
+  await updateIssueStatus(
+    octokit,
+    projectData.id,
+    issueItemData.id,
+    statusField.id,
+    defaultStatusOption.id
+  );
+  console.log(`Moved issue #${issue.number} back to "${defaultColumn}"`);
+};
+
 const run = async () => {
   try {
-    const token = core.getInput("github-token");
-    const projectUrl = core.getInput("project-url");
-    const targetLabels = core.getInput("target-labels");
-    const targetColumn = core.getInput("target-column");
-    const ignoredColumns = core.getInput("ignored-columns");
+    const token = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("github-token");
+    const projectUrl = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("project-url");
+    const targetLabels = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("target-labels");
+    const targetColumn = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("target-column");
+    const ignoredColumns = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("ignored-columns");
+    const defaultColumn = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("default-column", { required: false });
 
     const TARGET_COLUMN = targetColumn.trim();
     const TARGET_LABELS = parseCommaSeparatedInput(targetLabels);
     const IGNORED_COLUMNS = parseCommaSeparatedInput(ignoredColumns);
+    const DEFAULT_COLUMN = defaultColumn ? defaultColumn.trim() : null;
 
-    const octokit = github.getOctokit(token);
-    const issue = github.context.payload.issue;
-
-    validateIssue(issue, TARGET_LABELS);
+    const octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit(token);
+    const issue = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.issue;
+    const action = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.action;
 
     const projectData = await getProjectData(octokit, projectUrl);
 
-    await processIssueItem(
-      octokit,
-      projectData,
-      issue,
-      TARGET_COLUMN,
-      IGNORED_COLUMNS
-    );
+    if (action === "labeled") {
+      await handleLabeledEvent(
+        octokit,
+        issue,
+        projectData,
+        TARGET_COLUMN,
+        IGNORED_COLUMNS,
+        TARGET_LABELS
+      );
+      return;
+    }
+
+    if (action === "unlabeled" && DEFAULT_COLUMN) {
+      await handleUnlabeledEvent(
+        octokit,
+        issue,
+        projectData,
+        DEFAULT_COLUMN,
+        IGNORED_COLUMNS,
+        TARGET_LABELS
+      );
+      return;
+    }
+
+    console.log(`No action taken for ${action} event.`);
   } catch (error) {
-    core.setFailed(`Error moving issue: ${error.message}`);
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.setFailed(`Error processing issue: ${error.message}`);
   }
 };
 
 run();
+
+})();
 
 module.exports = __webpack_exports__;
 /******/ })()
