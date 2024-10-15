@@ -12,6 +12,7 @@ const parseProjectUrl = (url) => {
   return {
     owner: parts[4],
     isOrg: !isUserProject,
+    projectNumber: parts[6],
     projectUrl: url,
   };
 };
@@ -35,20 +36,9 @@ const fetchAllProjects = async (
   cursor = null,
   allProjects = []
 ) => {
-  const query = isOrg
-    ? `
+  const query = `
     query($owner: String!, $cursor: String) {
-      organization(login: $owner) {
-        projectsV2(first: 100, after: $cursor) {
-          nodes { id, url, number }
-          pageInfo { hasNextPage, endCursor }
-        }
-      }
-    }
-  `
-    : `
-    query($owner: String!, $cursor: String) {
-      user(login: $owner) {
+      ${isOrg ? "organization" : "user"}(login: $owner) {
         projectsV2(first: 100, after: $cursor) {
           nodes { id, url, number }
           pageInfo { hasNextPage, endCursor }
@@ -59,6 +49,15 @@ const fetchAllProjects = async (
 
   const result = await octokit.graphql(query, { owner, cursor });
   const projectsData = isOrg ? result.organization : result.user;
+
+  if (!projectsData) {
+    throw new Error(
+      `Unable to fetch projects for ${
+        isOrg ? "organization" : "user"
+      }: ${owner}`
+    );
+  }
+
   const updatedProjects = [...allProjects, ...projectsData.projectsV2.nodes];
 
   if (projectsData.projectsV2.pageInfo.hasNextPage) {
@@ -78,10 +77,13 @@ const getProjectData = async (octokit, projectUrl) => {
   const {
     owner,
     isOrg,
+    projectNumber,
     projectUrl: fullProjectUrl,
   } = parseProjectUrl(projectUrl);
   const allProjects = await fetchAllProjects(octokit, owner, isOrg);
-  const project = allProjects.find((p) => p.url === fullProjectUrl);
+  const project = allProjects.find(
+    (p) => p.number.toString() === projectNumber
+  );
 
   if (!project) {
     throw new Error(`Project not found: ${fullProjectUrl}`);
@@ -304,6 +306,7 @@ const handleUnlabeledEvent = async (
   TARGET_LABELS
 ) => {
   const removedLabel = github.context.payload.label.name;
+
   if (!TARGET_LABELS.includes(removedLabel)) {
     return;
   }
