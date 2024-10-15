@@ -35,4 +35,4 @@ jobs:
           ignored-columns: "Ready, In Progress, In Review, Done"
 ```
 
-Get the latestr `{release}` tag from https://github.com/m7kvqbe1/github-action-move-issues/releases.
+Get the latest `{release}` tag from https://github.com/m7kvqbe1/github-action-move-issues/releases.
