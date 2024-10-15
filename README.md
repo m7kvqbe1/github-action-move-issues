@@ -6,7 +6,7 @@ A GitHub Action to move issues between GitHub Projects V2 columns based on speci
 
 | Input             | Description                                                                                        | Required |
 | ----------------- | -------------------------------------------------------------------------------------------------- | -------- |
-| `github-token`    | You will need to create a PAT (Personal Access Token) with the `repo` and `admin:org` scopes.      | Yes      |
+| `github-token`    | Create a Personal Access Token (Classic) with the `public_repo` and `project` scopes.              | Yes      |
 | `project-url`     | The URL of the GitHub Project V2.                                                                  | Yes      |
 | `target-labels`   | Comma-separated list of labels that should trigger the action (e.g., "Size: Small, Size: Medium"). | Yes      |
 | `target-column`   | The target column name to move the issue to (e.g., "Candidates for Ready").                        | Yes      |
