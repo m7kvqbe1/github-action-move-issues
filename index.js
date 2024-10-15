@@ -258,6 +258,90 @@ const processIssueItem = async (
   console.log(`Moved issue #${issue.number} to "${TARGET_COLUMN}"`);
 };
 
+const handleLabeledEvent = async (
+  octokit,
+  issue,
+  projectData,
+  TARGET_COLUMN,
+  IGNORED_COLUMNS,
+  TARGET_LABELS
+) => {
+  validateIssue(issue, TARGET_LABELS);
+  await processIssueItem(
+    octokit,
+    projectData,
+    issue,
+    TARGET_COLUMN,
+    IGNORED_COLUMNS
+  );
+};
+
+const handleUnlabeledEvent = async (
+  octokit,
+  issue,
+  projectData,
+  DEFAULT_COLUMN,
+  IGNORED_COLUMNS,
+  TARGET_LABELS
+) => {
+  const removedLabel = github.context.payload.label.name;
+  if (!TARGET_LABELS.includes(removedLabel)) {
+    return;
+  }
+
+  await moveIssueToDefaultColumn(
+    octokit,
+    projectData,
+    issue,
+    DEFAULT_COLUMN,
+    IGNORED_COLUMNS
+  );
+};
+
+const moveIssueToDefaultColumn = async (
+  octokit,
+  projectData,
+  issue,
+  defaultColumn,
+  ignoredColumns
+) => {
+  const statusField = await getStatusField(octokit, projectData.id);
+  const defaultStatusOption = getTargetStatusOption(statusField, defaultColumn);
+
+  if (!defaultStatusOption) {
+    throw new Error(`Default column "${defaultColumn}" not found in project`);
+  }
+
+  let issueItemData = await getIssueItemData(
+    octokit,
+    projectData.id,
+    issue.node_id
+  );
+
+  if (!issueItemData) {
+    console.log(`Issue #${issue.number} is not in the project. Skipping.`);
+    return;
+  }
+
+  const currentStatus = getCurrentStatus(issueItemData);
+
+  if (ignoredColumns.includes(currentStatus)) {
+    console.log(
+      `Issue #${issue.number} is in an ignored column (${currentStatus}). Skipping.`
+    );
+    return;
+  }
+
+  await updateIssueStatus(
+    octokit,
+    projectData.id,
+    issueItemData.id,
+    statusField.id,
+    defaultStatusOption.id
+  );
+  console.log(`Moved issue #${issue.number} back to "${defaultColumn}"`);
+};
+
 const run = async () => {
   try {
     const token = core.getInput("github-token");
@@ -265,27 +349,46 @@ const run = async () => {
     const targetLabels = core.getInput("target-labels");
     const targetColumn = core.getInput("target-column");
     const ignoredColumns = core.getInput("ignored-columns");
+    const defaultColumn = core.getInput("default-column", { required: false });
 
     const TARGET_COLUMN = targetColumn.trim();
     const TARGET_LABELS = parseCommaSeparatedInput(targetLabels);
     const IGNORED_COLUMNS = parseCommaSeparatedInput(ignoredColumns);
+    const DEFAULT_COLUMN = defaultColumn ? defaultColumn.trim() : null;
 
     const octokit = github.getOctokit(token);
     const issue = github.context.payload.issue;
-
-    validateIssue(issue, TARGET_LABELS);
+    const action = github.context.payload.action;
 
     const projectData = await getProjectData(octokit, projectUrl);
 
-    await processIssueItem(
-      octokit,
-      projectData,
-      issue,
-      TARGET_COLUMN,
-      IGNORED_COLUMNS
-    );
+    if (action === "labeled") {
+      await handleLabeledEvent(
+        octokit,
+        issue,
+        projectData,
+        TARGET_COLUMN,
+        IGNORED_COLUMNS,
+        TARGET_LABELS
+      );
+      return;
+    }
+
+    if (action === "unlabeled" && DEFAULT_COLUMN) {
+      await handleUnlabeledEvent(
+        octokit,
+        issue,
+        projectData,
+        DEFAULT_COLUMN,
+        IGNORED_COLUMNS,
+        TARGET_LABELS
+      );
+      return;
+    }
+
+    console.log(`No action taken for ${action} event.`);
   } catch (error) {
-    core.setFailed(`Error moving issue: ${error.message}`);
+    core.setFailed(`Error processing issue: ${error.message}`);
   }
 };
 
