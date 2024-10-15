@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Create test issue
         id: create_issue
@@ -51,6 +51,7 @@ jobs:
       - name: Run issue mover action with debug
         uses: ./
         env:
+          GITHUB_EVENT_PATH: ${{ toJson(github.event) }}
           ACTIONS_STEP_DEBUG: true
         with:
           github-token: ${{ env.PAT_TOKEN }}
@@ -65,7 +66,7 @@ jobs:
         with:
           github-token: ${{ env.PAT_TOKEN }}
           script: |
-            const issueData = ${{ steps.create_issue.outputs.result }};
+            const issueData = ${{ steps.create_issue.outputs.result }}
             await github.rest.issues.update({
               owner: context.repo.owner,
               repo: context.repo.repo,
