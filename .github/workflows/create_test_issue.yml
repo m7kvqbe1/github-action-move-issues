@@ -1,0 +1,42 @@
+name: Create Test Issue on PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  create_test_issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create test issue
+        id: create_issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'Test issue for PR #' + context.issue.number,
+              body: 'This is a test issue created to verify the issue mover script.',
+              labels: ['Size: Small']
+            });
+            console.log('Test issue created:', issue.data.html_url);
+            core.setOutput('issue_number', issue.data.number);
+
+      - name: Wait for move action
+        run: sleep 30
+
+      - name: Clean up test issue
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PAT_TOKEN }}
+          script: |
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ steps.create_issue.outputs.issue_number }},
+              state: 'closed'
+            });
+            console.log('Test issue closed');
