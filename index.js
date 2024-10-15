@@ -267,6 +267,7 @@ const handleLabeledEvent = async (
   TARGET_LABELS
 ) => {
   validateIssue(issue, TARGET_LABELS);
+
   await processIssueItem(
     octokit,
     projectData,
@@ -286,6 +287,17 @@ const handleUnlabeledEvent = async (
 ) => {
   const removedLabel = github.context.payload.label.name;
   if (!TARGET_LABELS.includes(removedLabel)) {
+    return;
+  }
+
+  const hasTargetLabel = issue.labels.some((label) =>
+    TARGET_LABELS.includes(label.name)
+  );
+
+  if (hasTargetLabel) {
+    console.log(
+      `Issue #${issue.number} still has a target label. Not moving to default column.`
+    );
     return;
   }
 
