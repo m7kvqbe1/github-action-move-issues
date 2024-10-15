@@ -1,5 +1,5 @@
-const core = require("@actions/core");
-const github = require("@actions/github");
+import * as core from "@actions/core";
+import * as github from "@actions/github";
 
 const parseCommaSeparatedInput = (input) => {
   return input.split(",").map((item) => item.trim());
@@ -7,8 +7,11 @@ const parseCommaSeparatedInput = (input) => {
 
 const parseProjectUrl = (url) => {
   const parts = url.split("/");
+  const isUserProject = parts[3] === "users";
+
   return {
-    orgName: parts[parts.length - 3],
+    owner: parts[4],
+    isOrg: !isUserProject,
     projectUrl: url,
   };
 };
@@ -27,13 +30,25 @@ const validateIssue = (issue, TARGET_LABELS) => {
 
 const fetchAllProjects = async (
   octokit,
-  orgName,
+  owner,
+  isOrg,
   cursor = null,
   allProjects = []
 ) => {
-  const query = `
-    query($orgName: String!, $cursor: String) {
-      organization(login: $orgName) {
+  const query = isOrg
+    ? `
+    query($owner: String!, $cursor: String) {
+      organization(login: $owner) {
+        projectsV2(first: 100, after: $cursor) {
+          nodes { id, url, number }
+          pageInfo { hasNextPage, endCursor }
+        }
+      }
+    }
+  `
+    : `
+    query($owner: String!, $cursor: String) {
+      user(login: $owner) {
         projectsV2(first: 100, after: $cursor) {
           nodes { id, url, number }
           pageInfo { hasNextPage, endCursor }
@@ -42,17 +57,16 @@ const fetchAllProjects = async (
     }
   `;
 
-  const result = await octokit.graphql(query, { orgName, cursor });
-  const updatedProjects = [
-    ...allProjects,
-    ...result.organization.projectsV2.nodes,
-  ];
+  const result = await octokit.graphql(query, { owner, cursor });
+  const projectsData = isOrg ? result.organization : result.user;
+  const updatedProjects = [...allProjects, ...projectsData.projectsV2.nodes];
 
-  if (result.organization.projectsV2.pageInfo.hasNextPage) {
+  if (projectsData.projectsV2.pageInfo.hasNextPage) {
     return fetchAllProjects(
       octokit,
-      orgName,
-      result.organization.projectsV2.pageInfo.endCursor,
+      owner,
+      isOrg,
+      projectsData.projectsV2.pageInfo.endCursor,
       updatedProjects
     );
   }
@@ -61,8 +75,12 @@ const fetchAllProjects = async (
 };
 
 const getProjectData = async (octokit, projectUrl) => {
-  const { orgName, projectUrl: fullProjectUrl } = parseProjectUrl(projectUrl);
-  const allProjects = await fetchAllProjects(octokit, orgName);
+  const {
+    owner,
+    isOrg,
+    projectUrl: fullProjectUrl,
+  } = parseProjectUrl(projectUrl);
+  const allProjects = await fetchAllProjects(octokit, owner, isOrg);
   const project = allProjects.find((p) => p.url === fullProjectUrl);
 
   if (!project) {
