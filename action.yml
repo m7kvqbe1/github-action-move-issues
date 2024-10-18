@@ -1,4 +1,4 @@
-name: "Move Issue in Project"
+name: "Move Issue to Project Column"
 description: "A GitHub Action to move issues between GitHub Projects V2 columns based on labeling and unlabeling events."
 author: "m7kvqbe1"
 
