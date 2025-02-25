@@ -401,7 +401,12 @@ const run = async () => {
       core.getInput("skip-if-not-in-project") === "true";
 
     const octokit = github.getOctokit(token);
+
     const issue = github.context.payload.issue;
+    if (!issue || !issue.node_id) {
+      throw new Error("Invalid or missing issue object");
+    }
+
     const action = github.context.payload.action;
 
     const projectData = await getProjectData(octokit, projectUrl);
