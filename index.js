@@ -467,7 +467,7 @@ const run = async () => {
       return;
     }
 
-    console.log(`No action taken for ${eventName} ${action} event.`);
+    console.log(`No action taken for ${eventName}/${action} event.`);
   } catch (error) {
     core.setFailed(`Error processing issue: ${error.message}`);
   }
