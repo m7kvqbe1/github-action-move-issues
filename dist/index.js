@@ -34923,10 +34923,46 @@ const run = async () => {
       _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("skip-if-not-in-project") === "true";
 
     const octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit(token);
+
     const issue = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.issue;
+    if (!issue || !issue.node_id) {
+      throw new Error("Invalid or missing issue object");
+    }
+
+    const eventName = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.eventName;
     const action = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.action;
 
     const projectData = await getProjectData(octokit, projectUrl);
+
+    if (eventName === "issue_comment") {
+      if (action === "created") {
+        // a comment was created on an issue
+        const hasTargetLabel = issue.labels.some((label) =>
+          TARGET_LABELS.includes(label.name)
+        );
+        if (hasTargetLabel) {
+          // Proceed as if the label was added to the issue
+          await processIssueItem(
+            octokit,
+            projectData,
+            issue,
+            TARGET_COLUMN,
+            IGNORED_COLUMNS,
+            SKIP_IF_NOT_IN_PROJECT
+          );
+        } else {
+          // Proceed as if the label was removed from the issue
+          await moveIssueToDefaultColumn(
+            octokit,
+            projectData,
+            issue,
+            DEFAULT_COLUMN,
+            IGNORED_COLUMNS
+          );
+        }
+        return;
+      }
+    }
 
     if (action === "labeled") {
       await handleLabeledEvent(
@@ -34953,7 +34989,7 @@ const run = async () => {
       return;
     }
 
-    console.log(`No action taken for ${action} event.`);
+    console.log(`No action taken for ${eventName}/${action} event.`);
   } catch (error) {
     _actions_core__WEBPACK_IMPORTED_MODULE_0__.setFailed(`Error processing issue: ${error.message}`);
   }
