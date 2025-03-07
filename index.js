@@ -234,7 +234,8 @@ const processIssueItem = async (
   projectData,
   issue,
   TARGET_COLUMN,
-  IGNORED_COLUMNS
+  IGNORED_COLUMNS,
+  SKIP_IF_NOT_IN_PROJECT
 ) => {
   const statusField = await getStatusField(octokit, projectData.id);
   const targetStatusOption = getTargetStatusOption(statusField, TARGET_COLUMN);
@@ -250,11 +251,19 @@ const processIssueItem = async (
   );
 
   if (!issueItemData) {
+    if (SKIP_IF_NOT_IN_PROJECT) {
+      console.log(
+        `Issue #${issue.number} is not in the project. Skipping due to skip-if-not-in-project flag.`
+      );
+      return;
+    }
+
     issueItemData = await addIssueToProject(
       octokit,
       projectData.id,
       issue.node_id
     );
+    console.log(`Added issue #${issue.number} to the project.`);
   }
 
   const currentStatus = getCurrentStatus(issueItemData);
@@ -282,7 +291,8 @@ const handleLabeledEvent = async (
   projectData,
   TARGET_COLUMN,
   IGNORED_COLUMNS,
-  TARGET_LABELS
+  TARGET_LABELS,
+  SKIP_IF_NOT_IN_PROJECT
 ) => {
   validateIssue(issue, TARGET_LABELS);
 
@@ -291,7 +301,8 @@ const handleLabeledEvent = async (
     projectData,
     issue,
     TARGET_COLUMN,
-    IGNORED_COLUMNS
+    IGNORED_COLUMNS,
+    SKIP_IF_NOT_IN_PROJECT
   );
 };
 
@@ -386,11 +397,50 @@ const run = async () => {
     const IGNORED_COLUMNS = parseCommaSeparatedInput(ignoredColumns);
     const DEFAULT_COLUMN = defaultColumn ? defaultColumn.trim() : null;
 
+    const SKIP_IF_NOT_IN_PROJECT =
+      core.getInput("skip-if-not-in-project") === "true";
+
     const octokit = github.getOctokit(token);
+
     const issue = github.context.payload.issue;
+    if (!issue || !issue.node_id) {
+      throw new Error("Invalid or missing issue object");
+    }
+
+    const eventName = github.context.eventName;
     const action = github.context.payload.action;
 
     const projectData = await getProjectData(octokit, projectUrl);
+
+    if (eventName === "issue_comment") {
+      if (action === "created") {
+        // a comment was created on an issue
+        const hasTargetLabel = issue.labels.some((label) =>
+          TARGET_LABELS.includes(label.name)
+        );
+        if (hasTargetLabel) {
+          // Proceed as if the label was added to the issue
+          await processIssueItem(
+            octokit,
+            projectData,
+            issue,
+            TARGET_COLUMN,
+            IGNORED_COLUMNS,
+            SKIP_IF_NOT_IN_PROJECT
+          );
+        } else {
+          // Proceed as if the label was removed from the issue
+          await moveIssueToDefaultColumn(
+            octokit,
+            projectData,
+            issue,
+            DEFAULT_COLUMN,
+            IGNORED_COLUMNS
+          );
+        }
+        return;
+      }
+    }
 
     if (action === "labeled") {
       await handleLabeledEvent(
@@ -399,7 +449,8 @@ const run = async () => {
         projectData,
         TARGET_COLUMN,
         IGNORED_COLUMNS,
-        TARGET_LABELS
+        TARGET_LABELS,
+        SKIP_IF_NOT_IN_PROJECT
       );
       return;
     }
@@ -416,7 +467,7 @@ const run = async () => {
       return;
     }
 
-    console.log(`No action taken for ${action} event.`);
+    console.log(`No action taken for ${eventName}/${action} event.`);
   } catch (error) {
     core.setFailed(`Error processing issue: ${error.message}`);
   }

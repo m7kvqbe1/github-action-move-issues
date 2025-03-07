@@ -4,23 +4,27 @@ author: "m7kvqbe1"
 
 inputs:
   github-token:
-    description: "Personal Access Token to access the repository and projects board"
+    description: "Personal Access Token to access the repository and projects board."
     required: true
   project-url:
-    description: "The URL of the GitHub Project (V2)"
+    description: "The URL of the GitHub Project (V2)."
     required: true
   target-labels:
-    description: 'Comma-separated list of labels that should trigger the action (e.g., "Size: Small, Size: Medium")'
+    description: 'Comma-separated list of labels that should trigger the action (e.g., "Size: Small, Size: Medium").'
     required: true
   target-column:
-    description: 'The target column name to move the issue to when labeled (e.g., "Candidates for Ready")'
+    description: 'The target column name to move the issue to when labeled (e.g., "Candidates for Ready").'
     required: true
   ignored-columns:
-    description: 'Comma-separated list of column names to ignore (e.g., "Ready, In Progress, In Review, Done")'
+    description: 'Comma-separated list of column names to ignore (e.g., "Ready, In Progress, In Review, Done").'
     required: true
   default-column:
     description: 'The column to move the issue to when a target label is removed. If not specified, no action will be taken on unlabeling.'
     required: false
+  skip-if-not-in-project:
+    description: 'If set to "true", skip moving the issue if it is not already in the project.'
+    required: false
+    default: 'false'
 
 runs:
   using: "node20"
