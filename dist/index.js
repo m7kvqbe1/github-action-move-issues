@@ -34924,14 +34924,23 @@ const run = async () => {
 
     const octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit(token);
 
-    const issue = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.issue;
+    let issue = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.issue;
     if (!issue || !issue.node_id) {
       throw new Error("Invalid or missing issue object");
     }
 
+    const issueNumber = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue.number;
+    const { owner, repo } = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
+    // The issue might have been updated by a previous GitHub action; therefore, we refetch the issue data
+    const { data: updatedIssue } = await octokit.rest.issues.get({
+      owner,
+      repo,
+      issue_number: issueNumber,
+    });
+    issue = updatedIssue;
+
     const eventName = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.eventName;
     const action = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.action;
-
     const projectData = await getProjectData(octokit, projectUrl);
 
     if (eventName === "issue_comment") {
