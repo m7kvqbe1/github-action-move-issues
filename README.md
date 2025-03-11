@@ -4,14 +4,15 @@ A GitHub Action to move issues between GitHub Projects V2 columns based on speci
 
 ## Inputs
 
-| Input             | Description                                                                                                              | Required |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | -------- |
-| `github-token`    | Create a Personal Access Token (Classic) with the `public_repo` and `project` scopes.                                    | Yes      |
-| `project-url`     | The URL of the GitHub Project V2.                                                                                        | Yes      |
-| `target-labels`   | Comma-separated list of labels that should trigger the action (e.g., "Size: Small, Size: Medium").                       | Yes      |
-| `target-column`   | The target column name to move the issue to when labeled (e.g., "Candidates for Ready").                                 | Yes      |
-| `ignored-columns` | Comma-separated list of column names to ignore (e.g., "Ready, In Progress, In Review, Done").                            | Yes      |
-| `default-column`  | The column to move the issue to when a target label is removed. If not specified, no action will be taken on unlabeling. | No       |
+| Input                    | Description                                                                                                              | Required |
+|--------------------------|--------------------------------------------------------------------------------------------------------------------------|----------|
+| `github-token`           | Create a Personal Access Token (Classic) with the `public_repo` and `project` scopes.                                    | Yes      |
+| `project-url`            | The URL of the GitHub Project V2.                                                                                        | Yes      |
+| `target-labels`          | Comma-separated list of labels that should trigger the action (e.g., "Size: Small, Size: Medium").                       | Yes      |
+| `target-column`          | The target column name to move the issue to when labeled (e.g., "Candidates for Ready").                                 | Yes      |
+| `ignored-columns`        | Comma-separated list of column names to ignore (e.g., "Ready, In Progress, In Review, Done").                            | Yes      |
+| `default-column`         | The column to move the issue to when a target label is removed. If not specified, no action will be taken on unlabeling. | No       |
+| `skip-if-not-in-project` | Skip moving the issue if it is not already in the project (default: `false`)                                             | No       |
 
 ## Example Workflow
 
