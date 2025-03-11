@@ -21,6 +21,9 @@ inputs:
   default-column:
     description: 'The column to move the issue to when a target label is removed. If not specified, no action will be taken on unlabeling.'
     required: false
+  issue-number:
+    description: 'The issue number to use. Useful for triggering on PRs'
+    required: false
   skip-if-not-in-project:
     description: 'If set to "true", skip moving the issue if it is not already in the project.'
     required: false

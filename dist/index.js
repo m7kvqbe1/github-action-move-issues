@@ -34913,67 +34913,77 @@ const run = async () => {
     const targetColumn = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("target-column");
     const ignoredColumns = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("ignored-columns");
     const defaultColumn = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("default-column", { required: false });
+    const issueNumberParam = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("issue-number", { required: false });
 
     const TARGET_COLUMN = targetColumn.trim();
     const TARGET_LABELS = parseCommaSeparatedInput(targetLabels);
     const IGNORED_COLUMNS = parseCommaSeparatedInput(ignoredColumns);
     const DEFAULT_COLUMN = defaultColumn ? defaultColumn.trim() : null;
+    const ISSUE_NUMBER_PARAM = issueNumberParam ? issueNumberParam.trim() : null;
 
     const SKIP_IF_NOT_IN_PROJECT =
       _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("skip-if-not-in-project") === "true";
 
     const octokit = _actions_github__WEBPACK_IMPORTED_MODULE_1__.getOctokit(token);
 
-    let issue = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.issue;
-    if (!issue || !issue.node_id) {
-      throw new Error("Invalid or missing issue object");
-    }
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Determing issue number...");
+    const issueNumber = ISSUE_NUMBER_PARAM ? ISSUE_NUMBER_PARAM : _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue.number;
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Issue number: " + issueNumber);
 
-    const issueNumber = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.issue.number;
-    const { owner, repo } = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
     // The issue might have been updated by a previous GitHub action; therefore, we refetch the issue data
+    const { owner, repo } = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.repo;
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("owner: " + owner + " repo: " + repo);
     const { data: updatedIssue } = await octokit.rest.issues.get({
       owner,
       repo,
       issue_number: issueNumber,
     });
-    issue = updatedIssue;
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Udpated issue " + updatedIssue);
+    const issue = updatedIssue;
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Issue " + issue);
+
+    if (!issue || !issue.node_id) {
+      throw new Error("Invalid or missing issue object");
+    }
 
     const eventName = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.eventName;
     const action = _actions_github__WEBPACK_IMPORTED_MODULE_1__.context.payload.action;
     const projectData = await getProjectData(octokit, projectUrl);
 
-    if (eventName === "issue_comment") {
-      if (action === "created") {
-        // a comment was created on an issue
-        const hasTargetLabel = issue.labels.some((label) =>
-          TARGET_LABELS.includes(label.name)
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Event: " + eventName);
+
+    if ((eventName === "issue_comment") || (eventName === "pull_request") || (eventName === "pull_request_target")) {
+      _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Hit issue or PR");
+
+      const hasTargetLabel = issue.labels.some((label) =>
+        TARGET_LABELS.includes(label.name)
+      );
+      if (hasTargetLabel) {
+        // Proceed as if the label was added to the issue
+        await processIssueItem(
+          octokit,
+          projectData,
+          issue,
+          TARGET_COLUMN,
+          IGNORED_COLUMNS,
+          SKIP_IF_NOT_IN_PROJECT
         );
-        if (hasTargetLabel) {
-          // Proceed as if the label was added to the issue
-          await processIssueItem(
-            octokit,
-            projectData,
-            issue,
-            TARGET_COLUMN,
-            IGNORED_COLUMNS,
-            SKIP_IF_NOT_IN_PROJECT
-          );
-        } else {
-          // Proceed as if the label was removed from the issue
-          await moveIssueToDefaultColumn(
-            octokit,
-            projectData,
-            issue,
-            DEFAULT_COLUMN,
-            IGNORED_COLUMNS
-          );
-        }
-        return;
+      } else {
+        // Proceed as if the label was removed from the issue
+        await moveIssueToDefaultColumn(
+          octokit,
+          projectData,
+          issue,
+          DEFAULT_COLUMN,
+          IGNORED_COLUMNS
+        );
       }
+      return;
     }
 
     if (action === "labeled") {
+      _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Hit labeled");
+
       await handleLabeledEvent(
         octokit,
         issue,
@@ -34987,6 +34997,8 @@ const run = async () => {
     }
 
     if (action === "unlabeled" && DEFAULT_COLUMN) {
+      _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Hit unlabeled");
+
       await handleUnlabeledEvent(
         octokit,
         issue,
