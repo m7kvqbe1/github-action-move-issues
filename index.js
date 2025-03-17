@@ -430,7 +430,7 @@ const run = async () => {
 
     core.debug("Event: " + eventName);
 
-    if ((eventName === "issue_comment") || (eventName === "pull_request") || (eventName === "pull_request_target")) {
+    if ((eventName === "issue_comment") || (eventName === "pull_request") || (eventName === "pull_request_target") || ISSUE_NUMBER_PARAM) {
       core.debug("Hit issue or PR");
 
       const hasTargetLabel = issue.labels.some((label) =>

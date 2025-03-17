@@ -34952,7 +34952,7 @@ const run = async () => {
 
     _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Event: " + eventName);
 
-    if ((eventName === "issue_comment") || (eventName === "pull_request") || (eventName === "pull_request_target")) {
+    if ((eventName === "issue_comment") || (eventName === "pull_request") || (eventName === "pull_request_target") || ISSUE_NUMBER_PARAM) {
       _actions_core__WEBPACK_IMPORTED_MODULE_0__.debug("Hit issue or PR");
 
       const hasTargetLabel = issue.labels.some((label) =>
